@@ -1,0 +1,81 @@
+{{define "unit_form.html"}}
+{{template "header" .}}
+
+<div class="flex items-center gap-3 mb-6">
+  <a href="/units" class="text-gray-500 hover:text-white text-sm">← Library</a>
+  <h1 class="text-2xl font-bold text-orange-300">
+    {{if .Unit.ID}}Edit: {{.Unit.Label}}{{else}}New Unit{{end}}
+  </h1>
+</div>
+
+<form action="/units{{if .Unit.ID}}/{{.Unit.ID}}{{end}}" method="POST"
+      hx-post="/units{{if .Unit.ID}}/{{.Unit.ID}}{{end}}"
+      hx-target="body"
+      hx-push-url="/units">
+
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+
+    {{/* ── Identity ── */}}
+    <div class="panel">
+      <h2 class="font-semibold text-gray-300 mb-4">Identity</h2>
+
+      <label class="lbl">Unit ID <span class="text-gray-600 text-xs">(filename, no spaces)</span></label>
+      <input type="text" name="id" value="{{.Unit.ID}}"
+             placeholder="e.g. intercessors"
+             {{if .Unit.ID}}readonly class="opacity-60 cursor-not-allowed"{{end}}>
+
+      <label class="lbl mt-3 block">Display Label</label>
+      <input type="text" name="label" value="{{.Unit.Label}}" placeholder="e.g. Intercessors">
+
+      <label class="lbl mt-3 block">Keywords <span class="text-gray-600 text-xs">(comma-separated)</span></label>
+      <input type="text" name="keywords"
+             value="{{join .Unit.Keywords ", "}}"
+             placeholder="INFANTRY, ADEPTUS ASTARTES, TACTICUS">
+    </div>
+
+    {{/* ── Unit Rules ── */}}
+    <div class="panel">
+      <h2 class="font-semibold text-gray-300 mb-4">Unit-Level Rules</h2>
+      <p class="text-xs text-gray-500 mb-3">
+        These rules apply to ALL weapons in this unit. Only rules from the registry are listed.
+        Unimplemented rules are shown greyed — they are saved but not yet simulated.
+      </p>
+      <div class="space-y-1 max-h-64 overflow-y-auto">
+        {{range .Rules}}
+        <label class="flex items-start gap-2 cursor-pointer {{if not .Implemented}}opacity-50{{end}}">
+          <input type="checkbox" name="rules" value="{{.Name}}"
+                 {{if hasRule $.Unit .Name}}checked{{end}}
+                 class="mt-0.5 accent-orange-500">
+          <div>
+            <span class="text-sm text-gray-200">{{.DisplayName}}</span>
+            {{if not .Implemented}}<span class="text-xs text-gray-600 ml-1">(not yet simulated)</span>{{end}}
+            <p class="text-xs text-gray-500">{{.Description}}</p>
+          </div>
+        </label>
+        {{end}}
+      </div>
+    </div>
+  </div>
+
+  {{/* ── Groups JSON editor ── */}}
+  <div class="panel mb-6">
+    <h2 class="font-semibold text-gray-300 mb-1">Model Groups <span class="text-gray-500 text-sm font-normal">(JSON)</span></h2>
+    <p class="text-xs text-gray-500 mb-3">
+      Each group = a set of models with the same stats. Set <code class="bg-gray-800 px-1 rounded">has_special_weapon: true</code>
+      to split one model off with a different loadout (e.g. a sergeant).
+      Weapon type: <code class="bg-gray-800 px-1 rounded">"ranged"</code>, <code class="bg-gray-800 px-1 rounded">"melee"</code>, or <code class="bg-gray-800 px-1 rounded">"pistol"</code>.
+    </p>
+    <textarea name="groups_json" rows="20"
+              style="font-family: monospace; font-size: .8rem;"
+              placeholder='[{"name":"Model","count":1,"stats":{"toughness":4,"armor_save":3,"wounds":2},"weapons":[{"name":"Bolt Rifle","type":"ranged","firing_rate":2,"bal_skill":3,"strength":4,"ap":1,"damage":1}]}]'>{{.GroupsJSON}}</textarea>
+  </div>
+
+  <div class="flex gap-3">
+    <button type="submit" class="btn-primary">💾 Save Unit</button>
+    <a href="/units" class="btn-ghost">Cancel</a>
+  </div>
+
+</form>
+
+{{template "footer" .}}
+{{end}}

@@ -1,0 +1,60 @@
+{{define "units.html"}}
+{{template "header" .}}
+
+<div class="flex items-center justify-between mb-6">
+  <h1 class="text-2xl font-bold text-orange-300">Unit Library</h1>
+  <a href="/units/new" class="btn-primary">+ New Unit</a>
+</div>
+
+{{if not .Units}}
+<div class="panel text-center py-12 text-gray-500">
+  No units yet. <a href="/units/new" class="text-orange-400 hover:underline">Create your first unit →</a>
+</div>
+{{else}}
+<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+  {{range .Units}}
+  <div class="panel">
+    <div class="flex items-start justify-between mb-2">
+      <div>
+        <h2 class="font-semibold text-white">{{.Label}}</h2>
+        <p class="text-xs text-gray-500 font-mono">{{.ID}}</p>
+      </div>
+      <div class="flex gap-2">
+        <a href="/units/{{.ID}}" class="btn-ghost text-xs">Edit</a>
+        <button class="btn-danger text-xs"
+                hx-delete="/units/{{.ID}}"
+                hx-confirm="Delete {{.Label}}?"
+                hx-target="closest div.panel"
+                hx-swap="outerHTML">Del</button>
+      </div>
+    </div>
+
+    {{/* Keywords */}}
+    <div class="mb-2">
+      {{range .Keywords}}<span class="tag">{{.}}</span>{{end}}
+    </div>
+
+    {{/* Model groups */}}
+    {{range .Groups}}
+    <div class="text-xs text-gray-400 mb-1">
+      <span class="text-gray-300 font-medium">{{.Name}}</span>
+      <span class="text-gray-600">×{{.Count}}</span>
+      — T{{.Stats.Toughness}} {{.Stats.ArmorSave}}+ {{.Stats.Wounds}}W
+      {{if .Stats.InvulSave}}<span class="text-blue-400">{{.Stats.InvulSave}}++</span>{{end}}
+      {{if .Stats.FeelNoPain}}<span class="text-green-400">FNP{{.Stats.FeelNoPain}}+</span>{{end}}
+    </div>
+    {{end}}
+
+    {{/* Unit rules */}}
+    {{if .Rules}}
+    <div class="mt-2">
+      {{range .Rules}}<span class="rule-tag">{{.}}</span>{{end}}
+    </div>
+    {{end}}
+  </div>
+  {{end}}
+</div>
+{{end}}
+
+{{template "footer" .}}
+{{end}}

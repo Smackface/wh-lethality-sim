@@ -1,4 +1,4 @@
-{{define "layout"}}
+{{define "header"}}
 <!DOCTYPE html>
 <html lang="en" class="h-full bg-gray-950 text-gray-100">
 <head>
@@ -8,26 +8,36 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/htmx.org@2.0.3"></script>
   <style>
-    .bar-fill { background: #f97316; height: 1.1rem; min-width: 2px; border-radius: 2px; }
-    .tag { @apply inline-block bg-gray-700 text-xs px-2 py-0.5 rounded text-gray-300 mr-1 mb-1; }
-    .rule-tag { @apply inline-block bg-orange-900 text-xs px-2 py-0.5 rounded text-orange-200 mr-1 mb-1; }
-    .btn-primary { @apply bg-orange-600 hover:bg-orange-500 text-white font-semibold px-4 py-2 rounded transition-colors; }
-    .btn-ghost  { @apply border border-gray-600 hover:border-gray-400 text-gray-300 px-3 py-1.5 rounded text-sm transition-colors; }
-    .panel { @apply bg-gray-900 border border-gray-700 rounded-xl p-4; }
-    .label { @apply block text-sm text-gray-400 mb-1; }
-    select, input[type=text], input[type=number] {
-      @apply w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-gray-100 focus:outline-none focus:border-orange-500;
+    .htmx-indicator { display: none; }
+    .htmx-request .htmx-indicator { display: inline; }
+    .bar-fill { background: #f97316; height: 1rem; min-width: 2px; border-radius: 2px; transition: width 0.3s ease; }
+    .tag      { display: inline-block; background: #374151; font-size: .75rem; padding: 1px 8px; border-radius: 4px; color: #d1d5db; margin: 1px; }
+    .rule-tag { display: inline-block; background: #7c2d12; font-size: .75rem; padding: 1px 8px; border-radius: 4px; color: #fed7aa; margin: 1px; }
+    .panel    { background: #111827; border: 1px solid #374151; border-radius: .75rem; padding: 1rem; }
+    label.lbl { display: block; font-size: .875rem; color: #9ca3af; margin-bottom: .25rem; }
+    select, input[type=text], input[type=number], textarea {
+      width: 100%; background: #1f2937; border: 1px solid #4b5563;
+      border-radius: .375rem; padding: .5rem .75rem; color: #f3f4f6;
     }
+    select:focus, input:focus, textarea:focus { outline: none; border-color: #f97316; }
+    .btn-primary { background: #ea580c; color: white; font-weight: 600; padding: .5rem 1.25rem; border-radius: .375rem; cursor: pointer; border: none; transition: background .15s; }
+    .btn-primary:hover { background: #f97316; }
+    .btn-ghost { background: transparent; border: 1px solid #4b5563; color: #d1d5db; padding: .375rem .875rem; border-radius: .375rem; cursor: pointer; font-size: .875rem; transition: border-color .15s; }
+    .btn-ghost:hover { border-color: #9ca3af; }
+    .btn-danger { background: #991b1b; color: white; padding: .375rem .875rem; border-radius: .375rem; cursor: pointer; border: none; font-size: .875rem; }
+    .btn-danger:hover { background: #b91c1c; }
   </style>
 </head>
 <body class="min-h-full">
   <nav class="border-b border-gray-800 px-6 py-3 flex items-center gap-6">
     <span class="font-bold text-orange-400 text-lg tracking-wide">⚔ WH-LETHALITY</span>
-    <a href="/" class="text-sm text-gray-400 hover:text-white">Simulate</a>
-    <a href="/units" class="text-sm text-gray-400 hover:text-white">Unit Library</a>
+    <a href="/" class="text-sm text-gray-400 hover:text-white transition-colors">Simulate</a>
+    <a href="/units" class="text-sm text-gray-400 hover:text-white transition-colors">Unit Library</a>
   </nav>
   <main class="px-6 py-6 max-w-6xl mx-auto">
-    {{block "content" .}}{{end}}
+{{end}}
+
+{{define "footer"}}
   </main>
 </body>
 </html>
