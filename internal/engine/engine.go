@@ -11,10 +11,11 @@ import (
 
 // SimConfig describes a single simulation run request.
 type SimConfig struct {
-	Attacker   profiles.UnitProfile
-	Defender   profiles.UnitProfile
-	Phase      string // "shooting" or "melee"
-	Iterations int
+	Attacker        profiles.UnitProfile
+	Defender        profiles.UnitProfile
+	Phase           string // "shooting" | "melee"
+	Iterations      int
+	DefenderInCover bool // defender benefits from Cover (+1 to armour save vs ranged)
 }
 
 // RunSimulation dispatches Iterations concurrent combat resolutions and returns
@@ -24,6 +25,8 @@ func RunSimulation(cfg SimConfig) SimStats {
 		cfg.Iterations = 10_000
 	}
 
+	defModelCount := cfg.Defender.TotalModels()
+
 	results := make([]CombatResult, cfg.Iterations)
 	var wg sync.WaitGroup
 	wg.Add(cfg.Iterations)
@@ -32,7 +35,14 @@ func RunSimulation(cfg SimConfig) SimStats {
 		go func(idx int) {
 			defer wg.Done()
 			roller := dice.New()
-			results[idx] = resolveUnitAttack(cfg.Attacker, cfg.Defender, cfg.Phase, roller)
+			results[idx] = resolveUnitAttack(
+				cfg.Attacker,
+				cfg.Defender,
+				cfg.Phase,
+				defModelCount,
+				cfg.DefenderInCover,
+				roller,
+			)
 		}(i)
 	}
 
@@ -53,8 +63,9 @@ func aggregate(results []CombatResult, defStats profiles.ModelStats) SimStats {
 	}
 
 	var (
-		sumHits, sumWounds, sumMortals, sumUnsaved, sumDamage, sumKills float64
-		killCount                                                        int
+		sumHits, sumWounds, sumMortals, sumUnsaved float64
+		sumDamage, sumKills, sumHazSelf            float64
+		killCount                                  int
 	)
 	damages := make([]int, n)
 
@@ -65,6 +76,7 @@ func aggregate(results []CombatResult, defStats profiles.ModelStats) SimStats {
 		sumUnsaved += float64(r.UnsavedWounds)
 		sumDamage += float64(r.TotalDamage)
 		sumKills += float64(r.DefenderKills)
+		sumHazSelf += float64(r.HazardousSelfMW)
 		if r.DefenderKills >= 1 {
 			killCount++
 		}
@@ -79,6 +91,7 @@ func aggregate(results []CombatResult, defStats profiles.ModelStats) SimStats {
 	stats.MeanUnsavedWounds = sumUnsaved / fN
 	stats.MeanDamage = sumDamage / fN
 	stats.MeanKills = sumKills / fN
+	stats.MeanHazardousSelfMW = sumHazSelf / fN
 	stats.KillProbability = float64(killCount) / fN
 
 	mean := stats.MeanDamage

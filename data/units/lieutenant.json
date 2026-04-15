@@ -7,8 +7,8 @@
       "count": 1,
       "stats": { "toughness": 4, "armor_save": 3, "wounds": 4 },
       "weapons": [
-        { "name": "Master-crafted Bolt Rifle",    "type": "ranged", "firing_rate": 2, "bal_skill": 2, "strength": 4, "ap": 1, "damage": 2 },
-        { "name": "Master-crafted Power Weapon",  "type": "melee",  "firing_rate": 4, "bal_skill": 2, "strength": 5, "ap": 2, "damage": 2 }
+        { "name": "Master-crafted Bolt Rifle",    "type": "ranged", "attacks": 2, "bal_skill": 2, "strength": 4, "ap": 1, "damage": 2 },
+        { "name": "Master-crafted Power Weapon",  "type": "melee",  "attacks": 4, "bal_skill": 2, "strength": 5, "ap": 2, "damage": 2 }
       ],
       "has_special_weapon": false
     }

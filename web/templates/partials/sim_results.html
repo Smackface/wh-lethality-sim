@@ -32,6 +32,16 @@
     </div>
   </div>
 
+  {{if .HasHazardous}}
+  <div class="bg-red-950 border border-red-800 rounded-lg p-3 mb-6 text-sm flex items-center gap-3">
+    <span class="text-red-400 text-lg">⚠</span>
+    <div>
+      <span class="text-red-300 font-semibold">Hazardous:</span>
+      <span class="text-gray-300"> Attacker suffers avg <span class="text-red-300 font-bold">{{.MeanHazardousSelfMWStr}}</span> self-inflicted mortal wounds per round from Hazardous weapons.</span>
+    </div>
+  </div>
+  {{end}}
+
   {{/* ── Percentiles ── */}}
   <div class="flex flex-wrap gap-x-6 gap-y-1 text-sm mb-6 text-gray-400">
     <div>Median: <span class="text-white font-medium">{{.Damage50th}}</span></div>

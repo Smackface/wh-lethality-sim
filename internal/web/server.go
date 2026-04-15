@@ -2,6 +2,7 @@
 package web
 
 import (
+	"fmt"
 	"html/template"
 	"io/fs"
 	"net/http"
@@ -12,22 +13,52 @@ import (
 	"github.com/smackface/wh-lethality/internal/web/handlers"
 )
 
+// safeID converts a rule name to a CSS/HTML-safe id token (spaces→hyphens, lowercase).
+func safeID(name string) string {
+	r := strings.NewReplacer(" ", "-", "[", "", "]", "", "(", "", ")", "", "/", "-")
+	return strings.ToLower(r.Replace(name))
+}
+
+// existingRuleVal returns the current parameter values for a parametric rule on a unit.
+// Returns a 2-element slice: [value0, value1] (empty strings if not found).
+//   - "Sustained Hits 2"  → ["2", ""]
+//   - "Anti-INFANTRY 4"   → ["INFANTRY", "4"]
+func existingRuleVal(u *profiles.UnitProfile, baseName string) []string {
+	empty := []string{"", ""}
+	if u == nil {
+		return empty
+	}
+	for _, r := range u.Rules {
+		switch baseName {
+		case rules.SustainedHitsPrefix:
+			if strings.HasPrefix(r, rules.SustainedHitsPrefix+" ") {
+				val := strings.TrimPrefix(r, rules.SustainedHitsPrefix+" ")
+				return []string{val, ""}
+			}
+		case rules.AntiPrefix:
+			if kw, thresh, ok := rules.ParseAntiRule(r); ok {
+				return []string{kw, fmt.Sprint(thresh)}
+			}
+		}
+	}
+	return empty
+}
+
 // New creates the HTTP server, parses all templates from tmplFS, and registers routes.
 // tmplFS should be rooted at the templates directory (e.g. os.DirFS("web/templates")).
-// staticFS should be rooted at the static directory (e.g. os.DirFS("web/static")).
 func New(store *profiles.Store, tmplFS fs.FS, staticFS fs.FS) (http.Handler, error) {
 	funcMap := template.FuncMap{
-		// join combines a string slice with a separator
 		"join": strings.Join,
-		// hasRule checks if a unit profile has a given rule (used in unit_form.html)
 		"hasRule": func(u *profiles.UnitProfile, name string) bool {
 			if u == nil {
 				return false
 			}
 			return u.HasRule(name)
 		},
-		// allRules exposes the registry to templates
-		"allRules": rules.AllSorted,
+		// safeId converts a rule name to a CSS/HTML-safe id token
+		"safeId": safeID,
+		// existingRuleVal returns parameter values for a rule already on the unit
+		"existingRuleVal": existingRuleVal,
 	}
 
 	tmpl, err := template.New("root").Funcs(funcMap).ParseFS(
@@ -46,7 +77,7 @@ func New(store *profiles.Store, tmplFS fs.FS, staticFS fs.FS) (http.Handler, err
 	mux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.FS(staticFS))))
 
 	// Pages
-	mux.HandleFunc("GET /{$}", h.Index) // exact root only
+	mux.HandleFunc("GET /{$}", h.Index)
 	mux.HandleFunc("GET /units", h.ListUnits)
 	mux.HandleFunc("GET /units/new", h.NewUnitForm)
 	mux.HandleFunc("POST /units", h.CreateUnit)

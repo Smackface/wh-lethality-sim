@@ -99,11 +99,37 @@ func (h *H) CreateUnit(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// Assemble unit-level rules, including parametric variants
+	ruleList := r.Form["rules"] // non-parametric checkboxes
+
+	// Sustained Hits and other single-int parametric rules
+	for _, baseName := range r.Form["rule_param_base"] {
+		baseName = strings.TrimSpace(baseName)
+		if baseName == "" {
+			continue
+		}
+		safeKey := toSafeID(baseName)
+		valStr := strings.TrimSpace(r.FormValue("rule_param_val_" + safeKey))
+		if valStr == "" {
+			valStr = "1"
+		}
+		ruleList = append(ruleList, baseName+" "+valStr)
+	}
+
+	// Anti-[Keyword] (X+)
+	if r.FormValue("rule_anti_enabled") == "1" {
+		kw := strings.ToUpper(strings.TrimSpace(r.FormValue("rule_anti_keyword")))
+		thresh := strings.TrimSpace(r.FormValue("rule_anti_threshold"))
+		if kw != "" && thresh != "" {
+			ruleList = append(ruleList, "Anti-"+kw+" "+thresh)
+		}
+	}
+
 	unit := &profiles.UnitProfile{
 		ID:       r.FormValue("id"),
 		Label:    r.FormValue("label"),
 		Keywords: keywords,
-		Rules:    r.Form["rules"],
+		Rules:    ruleList,
 		Groups:   groups,
 	}
 
@@ -171,15 +197,17 @@ type SimView struct {
 	Iterations    int
 
 	// Pre-formatted strings for display
-	MeanHitsStr   string
-	MeanWoundsStr string
-	MeanMortalsStr string
-	HasMortals    bool
-	MeanDamageStr string
-	KillPctStr    string
-	KillPctClass  string // tailwind colour class
-	MeanKillsStr  string
-	StdDevStr     string
+	MeanHitsStr            string
+	MeanWoundsStr          string
+	MeanMortalsStr         string
+	HasMortals             bool
+	MeanDamageStr          string
+	KillPctStr             string
+	KillPctClass           string // tailwind colour class
+	MeanKillsStr           string
+	StdDevStr              string
+	HasHazardous           bool
+	MeanHazardousSelfMWStr string
 
 	// Percentiles
 	Damage50th int
@@ -227,23 +255,25 @@ func buildSimView(attacker, defender profiles.UnitProfile, phase string, stats e
 	}
 
 	return SimView{
-		AttackerLabel:  attacker.Label,
-		DefenderLabel:  defender.Label,
-		Phase:          phase,
-		Iterations:     stats.Iterations,
-		MeanHitsStr:    fmt.Sprintf("%.2f", stats.MeanHits),
-		MeanWoundsStr:  fmt.Sprintf("%.2f", stats.MeanWounds+stats.MeanMortalWounds),
-		MeanMortalsStr: fmt.Sprintf("%.2f", stats.MeanMortalWounds),
-		HasMortals:     stats.MeanMortalWounds > 0.001,
-		MeanDamageStr:  fmt.Sprintf("%.2f", stats.MeanDamage),
-		KillPctStr:     fmt.Sprintf("%.1f", kp),
-		KillPctClass:   kpClass,
-		MeanKillsStr:   fmt.Sprintf("%.3f", stats.MeanKills),
-		StdDevStr:      fmt.Sprintf("%.2f", stats.DamageStdDev),
-		Damage50th:     stats.Damage50th,
-		Damage75th:     stats.Damage75th,
-		Damage95th:     stats.Damage95th,
-		Bars:           bars,
+		AttackerLabel:          attacker.Label,
+		DefenderLabel:          defender.Label,
+		Phase:                  phase,
+		Iterations:             stats.Iterations,
+		MeanHitsStr:            fmt.Sprintf("%.2f", stats.MeanHits),
+		MeanWoundsStr:          fmt.Sprintf("%.2f", stats.MeanWounds+stats.MeanMortalWounds),
+		MeanMortalsStr:         fmt.Sprintf("%.2f", stats.MeanMortalWounds),
+		HasMortals:             stats.MeanMortalWounds > 0.001,
+		MeanDamageStr:          fmt.Sprintf("%.2f", stats.MeanDamage),
+		KillPctStr:             fmt.Sprintf("%.1f", kp),
+		KillPctClass:           kpClass,
+		MeanKillsStr:           fmt.Sprintf("%.3f", stats.MeanKills),
+		StdDevStr:              fmt.Sprintf("%.2f", stats.DamageStdDev),
+		HasHazardous:           stats.MeanHazardousSelfMW > 0.001,
+		MeanHazardousSelfMWStr: fmt.Sprintf("%.2f", stats.MeanHazardousSelfMW),
+		Damage50th:             stats.Damage50th,
+		Damage75th:             stats.Damage75th,
+		Damage95th:             stats.Damage95th,
+		Bars:                   bars,
 	}
 }
 
@@ -307,15 +337,23 @@ func (h *H) RunSim(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	defInCover := r.FormValue("defender_in_cover") == "1"
+
 	stats := engine.RunSimulation(engine.SimConfig{
-		Attacker:   resolvedAttacker,
-		Defender:   *defender,
-		Phase:      phase,
-		Iterations: iterations,
+		Attacker:        resolvedAttacker,
+		Defender:        *defender,
+		Phase:           phase,
+		Iterations:      iterations,
+		DefenderInCover: defInCover,
 	})
 
 	view := buildSimView(resolvedAttacker, *defender, phase, stats)
 	h.render(w, "sim_results.html", view)
+}
+
+// toSafeID converts a rule name to a safe HTML id/name token (spaces → hyphens, lowercase).
+func toSafeID(name string) string {
+	return strings.ToLower(strings.NewReplacer(" ", "-", "[", "", "]", "", "(", "", ")", "", "/", "-").Replace(name))
 }
 
 // ─── API ──────────────────────────────────────────────────────────────────────

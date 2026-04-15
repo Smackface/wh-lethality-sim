@@ -7,13 +7,13 @@
       "count": 10,
       "stats": { "toughness": 4, "armor_save": 3, "wounds": 2 },
       "weapons": [
-        { "name": "Bolt Rifle",          "type": "ranged", "firing_rate": 2, "bal_skill": 3, "strength": 4, "ap": 1, "damage": 1 },
-        { "name": "Close Combat Weapon", "type": "melee",  "firing_rate": 2, "bal_skill": 3, "strength": 4, "ap": 0, "damage": 1 }
+        { "name": "Bolt Rifle",          "type": "ranged", "attacks": 2, "bal_skill": 3, "strength": 4, "ap": 1, "damage": 1 },
+        { "name": "Close Combat Weapon", "type": "melee",  "attacks": 2, "bal_skill": 3, "strength": 4, "ap": 0, "damage": 1 }
       ],
       "has_special_weapon": true,
       "special_weapons": [
-        { "name": "Bolt Rifle",  "type": "ranged", "firing_rate": 2, "bal_skill": 3, "strength": 4, "ap": 1, "damage": 1 },
-        { "name": "Power Fist",  "type": "melee",  "firing_rate": 3, "bal_skill": 3, "strength": 8, "ap": 2, "damage": 2 }
+        { "name": "Bolt Rifle",  "type": "ranged", "attacks": 2, "bal_skill": 3, "strength": 4, "ap": 1, "damage": 1 },
+        { "name": "Power Fist",  "type": "melee",  "attacks": 3, "bal_skill": 3, "strength": 8, "ap": 2, "damage": 2 }
       ]
     }
   ],

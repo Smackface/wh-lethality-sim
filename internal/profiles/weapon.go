@@ -17,7 +17,7 @@ const (
 type WeaponProfile struct {
 	Name       string     `json:"name"`
 	Type       WeaponType `json:"type"`                 // ranged / melee / pistol
-	FiringRate int        `json:"firing_rate"`          // number of attacks
+	Attacks  int        `json:"attacks"`           // number of attacks
 	BalSkill   int        `json:"bal_skill"`            // BS or WS: minimum roll to hit (e.g. 3 for 3+)
 	Strength   int        `json:"strength"`
 	AP         int        `json:"ap"`                   // positive magnitude: 1 = AP-1, 2 = AP-2

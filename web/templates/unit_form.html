@@ -8,10 +8,7 @@
   </h1>
 </div>
 
-<form action="/units{{if .Unit.ID}}/{{.Unit.ID}}{{end}}" method="POST"
-      hx-post="/units{{if .Unit.ID}}/{{.Unit.ID}}{{end}}"
-      hx-target="body"
-      hx-push-url="/units">
+<form id="unit-form" action="/units{{if .Unit.ID}}/{{.Unit.ID}}{{end}}" method="POST">
 
   <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
 
@@ -22,12 +19,12 @@
       <label class="lbl">Unit ID <span class="text-gray-600 text-xs">(filename, no spaces)</span></label>
       <input type="text" name="id" value="{{.Unit.ID}}"
              placeholder="e.g. intercessors"
-             {{if .Unit.ID}}readonly class="opacity-60 cursor-not-allowed"{{end}}>
+             {{if .Unit.ID}}readonly style="opacity:.6;cursor:not-allowed"{{end}}>
 
       <label class="lbl mt-3 block">Display Label</label>
-      <input type="text" name="label" value="{{.Unit.Label}}" placeholder="e.g. Intercessors">
+      <input type="text" name="label" value="{{.Unit.Label}}" placeholder="e.g. Intercessors (10)">
 
-      <label class="lbl mt-3 block">Keywords <span class="text-gray-600 text-xs">(comma-separated)</span></label>
+      <label class="lbl mt-3 block">Keywords <span class="text-gray-600 text-xs">(comma-separated, ALL CAPS)</span></label>
       <input type="text" name="keywords"
              value="{{join .Unit.Keywords ", "}}"
              placeholder="INFANTRY, ADEPTUS ASTARTES, TACTICUS">
@@ -35,23 +32,82 @@
 
     {{/* ── Unit Rules ── */}}
     <div class="panel">
-      <h2 class="font-semibold text-gray-300 mb-4">Unit-Level Rules</h2>
+      <h2 class="font-semibold text-gray-300 mb-1">Unit-Level Rules</h2>
       <p class="text-xs text-gray-500 mb-3">
-        These rules apply to ALL weapons in this unit. Only rules from the registry are listed.
-        Unimplemented rules are shown greyed — they are saved but not yet simulated.
+        These rules apply to every weapon attack this unit makes.
+        Rules marked <span class="text-gray-600">(not yet simulated)</span> are saved but won't affect results.
       </p>
-      <div class="space-y-1 max-h-64 overflow-y-auto">
+      <div class="space-y-3 max-h-72 overflow-y-auto pr-1">
         {{range .Rules}}
-        <label class="flex items-start gap-2 cursor-pointer {{if not .Implemented}}opacity-50{{end}}">
-          <input type="checkbox" name="rules" value="{{.Name}}"
-                 {{if hasRule $.Unit .Name}}checked{{end}}
-                 class="mt-0.5 accent-orange-500">
-          <div>
-            <span class="text-sm text-gray-200">{{.DisplayName}}</span>
-            {{if not .Implemented}}<span class="text-xs text-gray-600 ml-1">(not yet simulated)</span>{{end}}
-            <p class="text-xs text-gray-500">{{.Description}}</p>
+        {{$rule := .}}
+        {{$checked := hasRule $.Unit .Name}}
+        {{$existingVal := existingRuleVal $.Unit .Name}}
+        <div class="{{if not .Implemented}}opacity-50{{end}}">
+
+          {{if eq .Name "Anti"}}
+          {{/* Anti-[Keyword] (X+): two extra fields */}}
+          <label class="flex items-start gap-2 cursor-pointer">
+            <input type="checkbox" name="rule_anti_enabled" value="1"
+                   {{if $checked}}checked{{end}}
+                   onchange="document.getElementById('anti-params').style.display=this.checked?'block':'none'"
+                   class="mt-0.5 accent-orange-500">
+            <div>
+              <span class="text-sm text-gray-200">{{.DisplayName}}</span>
+              {{if not .Implemented}}<span class="text-xs text-gray-600 ml-1">(not yet simulated)</span>{{end}}
+              <p class="text-xs text-gray-500">{{.Description}}</p>
+            </div>
+          </label>
+          <div id="anti-params" style="display:{{if $checked}}block{{else}}none{{end}};" class="ml-6 mt-2 flex gap-3">
+            <div class="flex-1">
+              <label class="lbl text-xs">Keyword (e.g. INFANTRY)</label>
+              <input type="text" name="rule_anti_keyword" value="{{index $existingVal 0}}"
+                     placeholder="INFANTRY" style="font-size:.8rem;padding:.3rem .5rem;">
+            </div>
+            <div style="width:80px;">
+              <label class="lbl text-xs">Threshold (X+)</label>
+              <input type="number" name="rule_anti_threshold" min="2" max="6"
+                     value="{{index $existingVal 1}}"
+                     placeholder="4" style="font-size:.8rem;padding:.3rem .5rem;">
+            </div>
           </div>
-        </label>
+
+          {{else if .IsParametric}}
+          {{/* Single-int parametric rules: Sustained Hits X, Melta X, etc. */}}
+          <label class="flex items-start gap-2 cursor-pointer">
+            <input type="checkbox" name="rule_param_base" value="{{.Name}}"
+                   {{if $checked}}checked{{end}}
+                   onchange="document.getElementById('param-{{.Name | safeId}}').style.display=this.checked?'flex':'none'"
+                   class="mt-0.5 accent-orange-500">
+            <div class="flex-1">
+              <span class="text-sm text-gray-200">{{.DisplayName}}</span>
+              {{if not .Implemented}}<span class="text-xs text-gray-600 ml-1">(not yet simulated)</span>{{end}}
+              <p class="text-xs text-gray-500">{{.Description}}</p>
+            </div>
+          </label>
+          <div id="param-{{.Name | safeId}}"
+               style="display:{{if $checked}}flex{{else}}none{{end}};"
+               class="ml-6 mt-1 items-center gap-2">
+            <label class="text-xs text-gray-400 whitespace-nowrap">Value of X:</label>
+            <input type="number" name="rule_param_val_{{.Name | safeId}}" min="1" max="6"
+                   value="{{index $existingVal 0}}"
+                   placeholder="1" style="width:60px;font-size:.8rem;padding:.3rem .5rem;">
+          </div>
+
+          {{else}}
+          {{/* Non-parametric rule: simple checkbox */}}
+          <label class="flex items-start gap-2 cursor-pointer">
+            <input type="checkbox" name="rules" value="{{.Name}}"
+                   {{if $checked}}checked{{end}}
+                   class="mt-0.5 accent-orange-500">
+            <div>
+              <span class="text-sm text-gray-200">{{.DisplayName}}</span>
+              {{if not .Implemented}}<span class="text-xs text-gray-600 ml-1">(not yet simulated)</span>{{end}}
+              <p class="text-xs text-gray-500">{{.Description}}</p>
+            </div>
+          </label>
+          {{end}}
+
+        </div>
         {{end}}
       </div>
     </div>
@@ -61,13 +117,14 @@
   <div class="panel mb-6">
     <h2 class="font-semibold text-gray-300 mb-1">Model Groups <span class="text-gray-500 text-sm font-normal">(JSON)</span></h2>
     <p class="text-xs text-gray-500 mb-3">
-      Each group = a set of models with the same stats. Set <code class="bg-gray-800 px-1 rounded">has_special_weapon: true</code>
-      to split one model off with a different loadout (e.g. a sergeant).
-      Weapon type: <code class="bg-gray-800 px-1 rounded">"ranged"</code>, <code class="bg-gray-800 px-1 rounded">"melee"</code>, or <code class="bg-gray-800 px-1 rounded">"pistol"</code>.
+      Each group = a set of models with the same stats and weapons.
+      Use <code class="bg-gray-800 px-1 rounded">has_special_weapon: true</code> to split one model off with a different loadout.
+      Weapon field <code class="bg-gray-800 px-1 rounded">attacks</code> = number of attacks per model.
+      Weapon rules (e.g. <code class="bg-gray-800 px-1 rounded">"Lethal Hits"</code>, <code class="bg-gray-800 px-1 rounded">"Anti-INFANTRY 4"</code>) go in the <code class="bg-gray-800 px-1 rounded">rules</code> array on each weapon.
     </p>
-    <textarea name="groups_json" rows="20"
+    <textarea name="groups_json" rows="22"
               style="font-family: monospace; font-size: .8rem;"
-              placeholder='[{"name":"Model","count":1,"stats":{"toughness":4,"armor_save":3,"wounds":2},"weapons":[{"name":"Bolt Rifle","type":"ranged","firing_rate":2,"bal_skill":3,"strength":4,"ap":1,"damage":1}]}]'>{{.GroupsJSON}}</textarea>
+              placeholder='[{"name":"Model","count":1,"stats":{"toughness":4,"armor_save":3,"wounds":2},"weapons":[{"name":"Bolt Rifle","type":"ranged","attacks":2,"bal_skill":3,"strength":4,"ap":1,"damage":1}]}]'>{{.GroupsJSON}}</textarea>
   </div>
 
   <div class="flex gap-3">

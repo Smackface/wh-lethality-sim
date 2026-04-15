@@ -64,6 +64,16 @@ func (u *UnitProfile) HasKeyword(kw string) bool {
 	return false
 }
 
+// TotalModels returns the sum of all model counts across every group.
+// Used by the Blast rule (extra attack per 5 models in target unit).
+func (u *UnitProfile) TotalModels() int {
+	total := 0
+	for _, g := range u.Groups {
+		total += g.Count
+	}
+	return total
+}
+
 // PrimaryStats returns the ModelStats of the first group.
 // Used for defender-side checks (T, saves). For homogeneous units this is exact;
 // heterogeneous units are a future TODO.
