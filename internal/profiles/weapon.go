@@ -2,30 +2,30 @@ package profiles
 
 import "fmt"
 
-// WeaponProfile represents a single weapon's characteristics.
+// WeaponType indicates which phase a weapon may be used in.
+type WeaponType string
+
+const (
+	WeaponRanged WeaponType = "ranged"
+	WeaponMelee  WeaponType = "melee"
+	// Pistol weapons can fire in both the Shooting and Fight phases.
+	WeaponPistol WeaponType = "pistol"
+)
+
+// WeaponProfile represents a single weapon's full characteristics.
+// BalSkill serves as WS for melee weapons — the mechanic is identical (roll d6 >= value).
 type WeaponProfile struct {
-	Name string // e.g. "Sternguard Bolter"
-
-	// Core ballistic stats
-	FiringRate int // Number of attacks generated (A)
-	BalSkill   int // Ballistic/Weapon Skill — the minimum roll to hit (e.g. 3 for 3+)
-	Strength   int // S
-	AP         int // Armor Piercing as a positive magnitude (e.g. 1 for AP-1, 2 for AP-2)
-	Damage     int // D — flat damage per unsaved wound
-
-	// Special rules carried by this weapon.
-	// String-based for flexibility; see rules/keywords.go for defined constants.
-	// Examples: "Devastating Wounds", "Lethal Hits", "Torrent", "Sustained Hits 1"
-	Rules []string
-
-	// TODO: DamageExpr string    — for variable damage, e.g. "D3", "D6+1", "2D3"
-	// TODO: AntiKeyword string   — for Anti-[Keyword] X+ rules
-	// TODO: AntiThreshold int    — the wound roll threshold for Anti rules
-	// TODO: MeltaBonus int       — Melta X (bonus damage within half-range)
-	// TODO: Blast bool           — Minimum 3 shots vs 5+ model units
+	Name       string     `json:"name"`
+	Type       WeaponType `json:"type"`                 // ranged / melee / pistol
+	FiringRate int        `json:"firing_rate"`          // number of attacks
+	BalSkill   int        `json:"bal_skill"`            // BS or WS: minimum roll to hit (e.g. 3 for 3+)
+	Strength   int        `json:"strength"`
+	AP         int        `json:"ap"`                   // positive magnitude: 1 = AP-1, 2 = AP-2
+	Damage     int        `json:"damage"`               // flat damage per unsaved wound
+	Rules      []string   `json:"rules,omitempty"`      // weapon-intrinsic rules
 }
 
-// HasRule returns true if the weapon has the named rule (exact match).
+// HasRule returns true if this weapon carries the named rule.
 func (w *WeaponProfile) HasRule(name string) bool {
 	for _, r := range w.Rules {
 		if r == name {
@@ -35,7 +35,7 @@ func (w *WeaponProfile) HasRule(name string) bool {
 	return false
 }
 
-// SustainedHitsBonus returns the bonus hit count from "Sustained Hits X", or 0.
+// SustainedHitsBonus returns X from "Sustained Hits X", or 0 if not present.
 func (w *WeaponProfile) SustainedHitsBonus() int {
 	var bonus int
 	for _, r := range w.Rules {
@@ -44,4 +44,16 @@ func (w *WeaponProfile) SustainedHitsBonus() int {
 		}
 	}
 	return 0
+}
+
+// UsableInPhase returns true if this weapon type may be used in the given combat phase.
+func (w *WeaponProfile) UsableInPhase(phase string) bool {
+	switch phase {
+	case "shooting":
+		return w.Type == WeaponRanged || w.Type == WeaponPistol
+	case "melee":
+		return w.Type == WeaponMelee || w.Type == WeaponPistol
+	default:
+		return true // unknown phase: allow everything
+	}
 }

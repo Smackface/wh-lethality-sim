@@ -1,0 +1,34 @@
+{{define "layout"}}
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-gray-950 text-gray-100">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WH-Lethality — WH40K Monte Carlo Simulator</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/htmx.org@2.0.3"></script>
+  <style>
+    .bar-fill { background: #f97316; height: 1.1rem; min-width: 2px; border-radius: 2px; }
+    .tag { @apply inline-block bg-gray-700 text-xs px-2 py-0.5 rounded text-gray-300 mr-1 mb-1; }
+    .rule-tag { @apply inline-block bg-orange-900 text-xs px-2 py-0.5 rounded text-orange-200 mr-1 mb-1; }
+    .btn-primary { @apply bg-orange-600 hover:bg-orange-500 text-white font-semibold px-4 py-2 rounded transition-colors; }
+    .btn-ghost  { @apply border border-gray-600 hover:border-gray-400 text-gray-300 px-3 py-1.5 rounded text-sm transition-colors; }
+    .panel { @apply bg-gray-900 border border-gray-700 rounded-xl p-4; }
+    .label { @apply block text-sm text-gray-400 mb-1; }
+    select, input[type=text], input[type=number] {
+      @apply w-full bg-gray-800 border border-gray-600 rounded px-3 py-2 text-gray-100 focus:outline-none focus:border-orange-500;
+    }
+  </style>
+</head>
+<body class="min-h-full">
+  <nav class="border-b border-gray-800 px-6 py-3 flex items-center gap-6">
+    <span class="font-bold text-orange-400 text-lg tracking-wide">⚔ WH-LETHALITY</span>
+    <a href="/" class="text-sm text-gray-400 hover:text-white">Simulate</a>
+    <a href="/units" class="text-sm text-gray-400 hover:text-white">Unit Library</a>
+  </nav>
+  <main class="px-6 py-6 max-w-6xl mx-auto">
+    {{block "content" .}}{{end}}
+  </main>
+</body>
+</html>
+{{end}}

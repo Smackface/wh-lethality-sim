@@ -1,0 +1,39 @@
+{{define "unit_details.html"}}
+{{with .Unit}}
+<div class="mt-2 text-sm space-y-2">
+  {{range .Groups}}
+  <div class="bg-gray-800 rounded p-3">
+    <div class="flex items-center gap-2 mb-1">
+      <span class="font-medium text-white">{{.Name}}</span>
+      <span class="text-gray-400">×{{.Count}}</span>
+      <span class="text-gray-500 text-xs">T{{.Stats.Toughness}} / {{.Stats.ArmorSave}}+
+        {{if .Stats.InvulSave}}/ {{.Stats.InvulSave}}++{{end}}
+        / {{.Stats.Wounds}}W
+      </span>
+    </div>
+    {{range .Weapons}}
+    <div class="text-xs text-gray-400 ml-2">
+      {{.Name}}
+      <span class="text-gray-500">(FR{{.FiringRate}} S{{.Strength}} AP{{.AP}} D{{.Damage}})</span>
+      {{range .Rules}}<span class="rule-tag">{{.}}</span>{{end}}
+    </div>
+    {{end}}
+    {{if .HasSpecialWeapon}}
+    <div class="mt-1 border-t border-gray-700 pt-1 ml-2 text-xs text-yellow-400">
+      Sergeant/Special:
+      {{range .SpecialWeapons}}
+      <span class="ml-1">{{.Name}} (FR{{.FiringRate}} S{{.Strength}} AP{{.AP}} D{{.Damage}})</span>
+      {{end}}
+    </div>
+    {{end}}
+  </div>
+  {{end}}
+  {{if .Rules}}
+  <div>
+    <span class="text-gray-500 text-xs">Unit rules: </span>
+    {{range .Rules}}<span class="rule-tag">{{.}}</span>{{end}}
+  </div>
+  {{end}}
+</div>
+{{end}}
+{{end}}

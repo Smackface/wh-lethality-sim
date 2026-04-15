@@ -1,0 +1,62 @@
+{{define "sim_results.html"}}
+<div class="panel border-orange-800">
+  <h2 class="font-bold text-lg text-orange-300 mb-1">
+    {{.Attacker.Label}} <span class="text-gray-500">vs</span> {{.Defender.Label}}
+  </h2>
+  <p class="text-sm text-gray-500 mb-5">
+    {{.Stats.Iterations | printf "%,d"}} simulations · {{.Phase}} phase
+  </p>
+
+  {{/* Phase averages */}}
+  <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+    <div class="bg-gray-800 rounded p-3 text-center">
+      <div class="text-2xl font-bold text-white">{{printf "%.2f" .Stats.MeanHits}}</div>
+      <div class="text-xs text-gray-400 mt-1">Mean Hits</div>
+    </div>
+    <div class="bg-gray-800 rounded p-3 text-center">
+      <div class="text-2xl font-bold text-white">{{printf "%.2f" .Stats.MeanWounds}}</div>
+      <div class="text-xs text-gray-400 mt-1">Mean Wounds
+        {{if gt .Stats.MeanMortalWounds 0.0}}
+        <span class="text-red-400">(+{{printf "%.2f" .Stats.MeanMortalWounds}} MW)</span>
+        {{end}}
+      </div>
+    </div>
+    <div class="bg-gray-800 rounded p-3 text-center">
+      <div class="text-2xl font-bold text-white">{{printf "%.2f" .Stats.MeanDamage}}</div>
+      <div class="text-xs text-gray-400 mt-1">Mean Damage</div>
+    </div>
+    <div class="bg-gray-800 rounded p-3 text-center">
+      <div class="text-2xl font-bold {{if ge .Stats.KillProbability 0.5}}text-green-400{{else if ge .Stats.KillProbability 0.25}}text-yellow-400{{else}}text-red-400{{end}}">
+        {{printf "%.1f" (mul .Stats.KillProbability 100.0)}}%
+      </div>
+      <div class="text-xs text-gray-400 mt-1">Kill Probability</div>
+    </div>
+  </div>
+
+  {{/* Percentiles */}}
+  <div class="flex gap-6 text-sm mb-6 text-gray-300">
+    <div>Median damage: <span class="text-white font-medium">{{.Stats.Damage50th}}</span></div>
+    <div>75th pct: <span class="text-white font-medium">{{.Stats.Damage75th}}</span></div>
+    <div>95th pct: <span class="text-white font-medium">{{.Stats.Damage95th}}</span></div>
+    <div>Std dev: <span class="text-white font-medium">{{printf "%.2f" .Stats.DamageStdDev}}</span></div>
+  </div>
+
+  {{/* Damage distribution bar chart */}}
+  <div>
+    <h3 class="text-sm font-semibold text-gray-400 mb-2">Damage Distribution</h3>
+    <div class="space-y-1">
+      {{range $dmg, $count := .Stats.DamageDist}}
+      {{$pct := divf (mulf (float64 $count) 100.0) (float64 $.Stats.Iterations)}}
+      <div class="flex items-center gap-2 text-sm">
+        <span class="w-14 text-right text-gray-400">{{$dmg}} dmg</span>
+        <div class="flex-1 bg-gray-800 rounded overflow-hidden h-5 relative">
+          <div class="bar-fill" style="width: {{printf "%.1f" $pct}}%"></div>
+        </div>
+        <span class="w-16 text-gray-300">{{printf "%.1f" $pct}}%</span>
+        <span class="text-gray-500 text-xs w-16">({{$count}})</span>
+      </div>
+      {{end}}
+    </div>
+  </div>
+</div>
+{{end}}

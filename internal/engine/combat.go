@@ -1,6 +1,3 @@
-// Package engine implements the WH40K 10th edition combat resolution loop.
-// Each call to ResolveCombat runs one complete attack sequence (all phases)
-// for a given attacker+weapon vs defender pairing using a provided dice roller.
 package engine
 
 import (
@@ -9,29 +6,43 @@ import (
 	"github.com/smackface/wh-lethality/internal/rules"
 )
 
-// ResolveCombat runs one complete attack sequence and returns the raw outcome.
-// It is safe to call concurrently from multiple goroutines as long as each
-// goroutine supplies its own distinct *dice.Roller.
-func ResolveCombat(
-	attacker profiles.UnitProfile,
+// resolveWeaponAttack runs one complete attack sequence for a single weapon
+// against a defender's stats. effectiveRules is the merged set of weapon
+// rules + unit-level rules.
+func resolveWeaponAttack(
 	weapon profiles.WeaponProfile,
-	defender profiles.UnitProfile,
+	effectiveRules []string,
+	defStats profiles.ModelStats,
+	defRules []string,
 	roller *dice.Roller,
 ) CombatResult {
 	result := CombatResult{}
 
-	// ─── Phase 1: Hit Rolls ───────────────────────────────────────────────────
+	// ─── Hit Phase ────────────────────────────────────────────────────────────
 
 	hitThreshold := weapon.BalSkill
 
-	// Stealth on the defender imposes -1 to hit (raises the threshold by 1)
-	if defender.HasRule(rules.Stealth) {
-		hitThreshold++
+	// Stealth: attacker suffers -1 to hit (raise threshold by 1)
+	for _, r := range defRules {
+		if r == rules.Stealth {
+			hitThreshold++
+			break
+		}
 	}
 
 	isTorrent := weapon.HasRule(rules.Torrent)
+	// Torrent may also come from unit-level rules
+	if !isTorrent {
+		for _, r := range effectiveRules {
+			if r == rules.Torrent {
+				isTorrent = true
+				break
+			}
+		}
+	}
+
 	totalHits := 0
-	autoWounds := 0 // From Lethal Hits — skip wound roll, go straight to saves
+	autoWounds := 0
 
 	for i := 0; i < weapon.FiringRate; i++ {
 		roll := roller.D6()
@@ -39,7 +50,7 @@ func ResolveCombat(
 			Roll:         roll,
 			HitThreshold: hitThreshold,
 			IsTorrent:    isTorrent,
-		}, weapon.Rules)
+		}, effectiveRules)
 
 		if outcome.IsAutoWound {
 			autoWounds++
@@ -47,27 +58,23 @@ func ResolveCombat(
 		if outcome.IsHit {
 			totalHits++
 		}
-		// Bonus hits (Sustained Hits) are rolled as normal hits; generate them here
 		totalHits += outcome.BonusHits
 	}
 
 	result.Hits = totalHits + autoWounds
 
-	// ─── Phase 2: Wound Rolls ─────────────────────────────────────────────────
+	// ─── Wound Phase ──────────────────────────────────────────────────────────
 
-	woundThreshold := rules.WoundThreshold(weapon.Strength, defender.Toughness)
-	normalWounds := 0
+	woundThreshold := rules.WoundThreshold(weapon.Strength, defStats.Toughness)
+	normalWounds := autoWounds // Lethal Hits skip wound roll, go straight to saves
 	mortalWounds := 0
-
-	// Auto-wounds from Lethal Hits skip the wound roll and go straight to saves
-	normalWounds += autoWounds
 
 	for i := 0; i < totalHits; i++ {
 		roll := roller.D6()
 		outcome := rules.ApplyWoundRules(rules.WoundContext{
 			Roll:           roll,
 			WoundThreshold: woundThreshold,
-		}, weapon.Rules)
+		}, effectiveRules)
 
 		if outcome.IsMortalWound {
 			mortalWounds++
@@ -79,37 +86,29 @@ func ResolveCombat(
 	result.Wounds = normalWounds
 	result.MortalWounds = mortalWounds
 
-	// ─── Phase 3: Save Rolls (normal wounds only) ─────────────────────────────
+	// ─── Save Phase ───────────────────────────────────────────────────────────
 
-	effectiveSave := rules.EffectiveSave(defender.ArmorSave, defender.InvulSave, weapon.AP)
+	effectiveSave := rules.EffectiveSave(defStats.ArmorSave, defStats.InvulSave, weapon.AP)
 	unsavedWounds := 0
 
 	for i := 0; i < normalWounds; i++ {
-		roll := roller.D6()
-		// Defender needs to roll >= effectiveSave to pass
-		if roll < effectiveSave {
+		if roller.D6() < effectiveSave {
 			unsavedWounds++
 		}
 	}
 
 	result.UnsavedWounds = unsavedWounds
 
-	// ─── Phase 4: Damage & Feel No Pain ───────────────────────────────────────
-	//
-	// Mortal wounds bypass saves but are still subject to Feel No Pain.
-	// Each point of damage gets its own FNP roll.
+	// ─── Damage & Feel No Pain ────────────────────────────────────────────────
 
 	totalDamage := 0
-	fnpThreshold := defender.FeelNoPain // 0 = no FNP
+	fnp := defStats.FeelNoPain
 
 	applyDamage := func(sources int) {
 		for i := 0; i < sources; i++ {
-			damagePerWound := weapon.Damage
-			for d := 0; d < damagePerWound; d++ {
-				if fnpThreshold > 0 {
-					if roller.D6() >= fnpThreshold {
-						continue // FNP save passed — this point of damage negated
-					}
+			for d := 0; d < weapon.Damage; d++ {
+				if fnp > 0 && roller.D6() >= fnp {
+					continue // FNP passed — point of damage negated
 				}
 				totalDamage++
 			}
@@ -117,15 +116,66 @@ func ResolveCombat(
 	}
 
 	applyDamage(unsavedWounds)
-	applyDamage(mortalWounds) // Mortal wounds deal weapon.Damage each
+	applyDamage(mortalWounds)
 
 	result.TotalDamage = totalDamage
-
-	// Calculate kills: how many full defender models were eliminated
-	// For now, a single-model simulation — kill = damage >= defender wounds
-	if defender.Wounds > 0 {
-		result.DefenderKills = totalDamage / defender.Wounds
+	if defStats.Wounds > 0 {
+		result.DefenderKills = totalDamage / defStats.Wounds
 	}
 
 	return result
+}
+
+// resolveUnitAttack runs all weapon attacks from a fully resolved UnitProfile
+// against a defender for a given combat phase. It iterates every model group
+// and each model's weapons, merging unit-level rules into effective weapon rules.
+func resolveUnitAttack(
+	attacker profiles.UnitProfile,
+	defender profiles.UnitProfile,
+	phase string,
+	roller *dice.Roller,
+) CombatResult {
+	defStats := defender.PrimaryStats()
+	combined := CombatResult{}
+
+	for _, group := range attacker.Groups {
+		// Normal models (all if no special weapon, Count-1 if there is one)
+		normalCount := group.NormalCount()
+		for i := 0; i < normalCount; i++ {
+			for _, w := range group.Weapons {
+				if !w.UsableInPhase(phase) {
+					continue
+				}
+				effective := mergeStrings(w.Rules, attacker.Rules)
+				r := resolveWeaponAttack(w, effective, defStats, defender.Rules, roller)
+				combined = addResults(combined, r)
+			}
+		}
+
+		// Special model (sergeant, champion) with their own weapon loadout
+		if group.HasSpecialWeapon && len(group.SpecialWeapons) > 0 {
+			for _, w := range group.SpecialWeapons {
+				if !w.UsableInPhase(phase) {
+					continue
+				}
+				effective := mergeStrings(w.Rules, attacker.Rules)
+				r := resolveWeaponAttack(w, effective, defStats, defender.Rules, roller)
+				combined = addResults(combined, r)
+			}
+		}
+	}
+
+	return combined
+}
+
+// addResults sums two CombatResults together.
+func addResults(a, b CombatResult) CombatResult {
+	return CombatResult{
+		Hits:          a.Hits + b.Hits,
+		Wounds:        a.Wounds + b.Wounds,
+		MortalWounds:  a.MortalWounds + b.MortalWounds,
+		UnsavedWounds: a.UnsavedWounds + b.UnsavedWounds,
+		TotalDamage:   a.TotalDamage + b.TotalDamage,
+		DefenderKills: a.DefenderKills + b.DefenderKills,
+	}
 }

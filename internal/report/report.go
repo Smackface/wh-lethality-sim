@@ -22,7 +22,7 @@ func Print(
 	sep := strings.Repeat("─", 60)
 
 	fmt.Fprintln(w, sep)
-	fmt.Fprintf(w, "  MATCHUP: %s [%s]  vs  %s\n", attacker.Name, weapon.Name, defender.Name)
+	fmt.Fprintf(w, "  MATCHUP: %s [%s]  vs  %s\n", attacker.Label, weapon.Name, defender.Label)
 	fmt.Fprintln(w, sep)
 	fmt.Fprintf(w, "  Simulations:      %d\n", stats.Iterations)
 	fmt.Fprintln(w)
