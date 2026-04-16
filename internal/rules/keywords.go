@@ -52,11 +52,25 @@ const (
 	// who benefit from Cover.
 	IgnoresCover = "Ignores Cover"
 
-	// TODO: Melta X — add X to damage within half range.
-	// TODO: Indirect Fire — does not require line of sight; -1 to hit.
-	// TODO: Precision — wounds on unmodified 6s can target Character models.
-	// TODO: Twin-linked — re-roll wound rolls.
-	// TODO: Rapid Fire X — double attacks if within half range.
+	// TwinLinked — Re-roll wound rolls of 1.
+	TwinLinked = "Twin-linked"
+
+	// RapidFirePrefix — Within half range, this weapon gains X bonus attacks.
+	// Full rule string: "Rapid Fire X" (e.g. "Rapid Fire 2").
+	RapidFirePrefix = "Rapid Fire"
+
+	// MeltaPrefix — Within half range, add X to the damage of each successful attack.
+	// Full rule string: "Melta X" (e.g. "Melta 2").
+	MeltaPrefix = "Melta"
+
+	// IndirectFire — Can target units not visible to the bearer, but -1 to all hit rolls.
+	IndirectFire = "Indirect Fire"
+
+	// Precision — Unmodified wound rolls of 6 can be allocated to CHARACTER models
+	// within the target unit, bypassing the normal closest-model rule.
+	// In the current sim model this is a target-selection rule and does not affect
+	// damage output totals.
+	Precision = "Precision"
 )
 
 // ─── Unit/Model Rule Keywords ─────────────────────────────────────────────────
@@ -101,6 +115,24 @@ func ParseAntiRule(name string) (keyword string, threshold int, ok bool) {
 func scanSustainedHits(rule string, out *int) (int, error) {
 	n, err := fmt.Sscanf(rule, "Sustained Hits %d", out)
 	return n, err
+}
+
+// ParseRapidFire extracts X from "Rapid Fire X" (e.g. "Rapid Fire 2" → 2, true).
+func ParseRapidFire(name string) (int, bool) {
+	var x int
+	if n, _ := fmt.Sscanf(name, "Rapid Fire %d", &x); n == 1 {
+		return x, true
+	}
+	return 0, false
+}
+
+// ParseMelta extracts X from "Melta X" (e.g. "Melta 2" → 2, true).
+func ParseMelta(name string) (int, bool) {
+	var x int
+	if n, _ := fmt.Sscanf(name, "Melta %d", &x); n == 1 {
+		return x, true
+	}
+	return 0, false
 }
 
 // ─── Phase Contexts ───────────────────────────────────────────────────────────

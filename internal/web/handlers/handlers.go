@@ -338,6 +338,7 @@ func (h *H) RunSim(w http.ResponseWriter, r *http.Request) {
 	}
 
 	defInCover := r.FormValue("defender_in_cover") == "1"
+	withinHalfRange := r.FormValue("within_half_range") == "1"
 
 	stats := engine.RunSimulation(engine.SimConfig{
 		Attacker:        resolvedAttacker,
@@ -345,6 +346,7 @@ func (h *H) RunSim(w http.ResponseWriter, r *http.Request) {
 		Phase:           phase,
 		Iterations:      iterations,
 		DefenderInCover: defInCover,
+		WithinHalfRange: withinHalfRange,
 	})
 
 	view := buildSimView(resolvedAttacker, *defender, phase, stats)

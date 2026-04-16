@@ -29,6 +29,7 @@ func resolveWeaponAttack(
 	defKeywords []string,
 	defModelCount int,
 	defInCover bool,
+	withinHalfRange bool,
 	roller *dice.Roller,
 ) CombatResult {
 	result := CombatResult{}
@@ -53,10 +54,28 @@ func resolveWeaponAttack(
 		}
 	}
 
+	// Indirect Fire: -1 to hit (raise hit threshold by 1), like Stealth but from attacker side
+	for _, r := range effectiveRules {
+		if r == rules.IndirectFire {
+			hitThreshold++
+			break
+		}
+	}
+
 	// Blast: +1 attack per 5 models in defender
 	attacks := weapon.Attacks
 	if weapon.HasRule(rules.Blast) && defModelCount > 0 {
 		attacks += defModelCount / 5
+	}
+
+	// Rapid Fire X: +X attacks within half range
+	if withinHalfRange {
+		for _, r := range effectiveRules {
+			if x, ok := rules.ParseRapidFire(r); ok {
+				attacks += x
+				break
+			}
+		}
 	}
 
 	totalHits := 0  // hits that need wound rolls
@@ -92,11 +111,24 @@ func resolveWeaponAttack(
 	// whether it was a natural 6 or a lower roll enabled by Anti-[Keyword].
 	critThreshold := rules.CriticalWoundThreshold(effectiveRules, defKeywords)
 
+	// Twin-linked: re-roll wound rolls of 1
+	hasTwinLinked := false
+	for _, r := range effectiveRules {
+		if r == rules.TwinLinked {
+			hasTwinLinked = true
+			break
+		}
+	}
+
 	normalWounds := autoWounds // Lethal Hit auto-wounds skip wound roll, go straight to saves
 	mortalWounds := 0
 
 	for i := 0; i < totalHits; i++ {
 		roll := roller.D6()
+		// Twin-linked: re-roll on a 1 (re-rolled result stands)
+		if roll == 1 && hasTwinLinked {
+			roll = roller.D6()
+		}
 		outcome := rules.ApplyWoundRules(rules.WoundContext{
 			Roll:                   roll,
 			WoundThreshold:         woundThreshold,
@@ -146,12 +178,23 @@ func resolveWeaponAttack(
 
 	// ─── Damage & Feel No Pain ────────────────────────────────────────────────
 
+	// Melta X: +X to damage per successful attack within half range
+	effectiveDamage := weapon.Damage
+	if withinHalfRange {
+		for _, r := range effectiveRules {
+			if x, ok := rules.ParseMelta(r); ok {
+				effectiveDamage += x
+				break
+			}
+		}
+	}
+
 	fnp := defStats.FeelNoPain
 	totalDamage := 0
 
 	applyDamageInstances := func(sources int) {
 		for i := 0; i < sources; i++ {
-			for d := 0; d < weapon.Damage; d++ {
+			for d := 0; d < effectiveDamage; d++ {
 				if fnp > 0 && roller.D6() >= fnp {
 					continue // FNP passed — this point of damage negated
 				}
@@ -205,6 +248,7 @@ func resolveUnitAttack(
 	phase string,
 	defModelCount int,
 	defInCover bool,
+	withinHalfRange bool,
 	roller *dice.Roller,
 ) CombatResult {
 	defStats := defender.PrimaryStats()
@@ -223,7 +267,7 @@ func resolveUnitAttack(
 					w, effective,
 					group.Stats, defStats,
 					defender.Rules, defender.Keywords,
-					defModelCount, defInCover,
+					defModelCount, defInCover, withinHalfRange,
 					roller,
 				)
 				combined = addResults(combined, r)
@@ -241,7 +285,7 @@ func resolveUnitAttack(
 					w, effective,
 					group.Stats, defStats,
 					defender.Rules, defender.Keywords,
-					defModelCount, defInCover,
+					defModelCount, defInCover, withinHalfRange,
 					roller,
 				)
 				combined = addResults(combined, r)

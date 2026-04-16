@@ -160,33 +160,33 @@ var Registry = map[string]RuleDefinition{
 		Phases:       []Phase{PhaseDamage},
 		Scope:        ScopeWeapon,
 		IsParametric: true,
-		Params:       []ParamSchema{{Name: "X", Type: "int", Description: "Bonus damage at half range"}},
-		Description:  "Add X to the damage characteristic of each successful attack if the target is within half this weapon's range.",
-		Implemented:  false,
+		Params:       []ParamSchema{{Name: "X", Type: "int", Description: "Bonus damage per successful attack within half range"}},
+		Description:  "Add X to the damage of each successful attack if the target is within half this weapon's range. Enable 'Within Half Range' in the sim config to activate this bonus.",
+		Implemented:  true,
 	},
 	"Indirect Fire": {
 		Name:        "Indirect Fire",
 		DisplayName: "Indirect Fire",
 		Phases:      []Phase{PhaseHit},
 		Scope:       ScopeWeapon,
-		Description: "This weapon can target units not visible to the bearer, but all hit rolls suffer -1.",
-		Implemented: false,
+		Description: "This weapon can target units not visible to the bearer. All hit rolls suffer -1 (hit threshold raised by 1).",
+		Implemented: true,
 	},
 	"Precision": {
 		Name:        "Precision",
 		DisplayName: "Precision",
 		Phases:      []Phase{PhaseWound},
 		Scope:       ScopeWeapon,
-		Description: "Unmodified wound rolls of 6 can target CHARACTER models even if they are not the closest model.",
-		Implemented: false,
+		Description: "Unmodified wound rolls of 6 can be allocated to CHARACTER models within the unit. Target-selection rule — does not affect total damage output in the current simulation model.",
+		Implemented: true,
 	},
 	"Twin-linked": {
 		Name:        "Twin-linked",
 		DisplayName: "Twin-linked",
 		Phases:      []Phase{PhaseWound},
 		Scope:       ScopeWeapon,
-		Description: "Re-roll wound rolls of 1.",
-		Implemented: false,
+		Description: "Re-roll wound rolls of 1. The re-rolled result stands even if it is another 1.",
+		Implemented: true,
 	},
 	"Rapid Fire X": {
 		Name:         "Rapid Fire X",
@@ -195,8 +195,8 @@ var Registry = map[string]RuleDefinition{
 		Scope:        ScopeWeapon,
 		IsParametric: true,
 		Params:       []ParamSchema{{Name: "X", Type: "int", Description: "Bonus attacks within half range"}},
-		Description:  "Gain X additional attacks if the target is within half this weapon's range.",
-		Implemented:  false,
+		Description:  "This weapon gains X additional attacks if the target is within half this weapon's range. Enable 'Within Half Range' in the sim config to activate this bonus.",
+		Implemented:  true,
 	},
 }
 
@@ -217,6 +217,14 @@ func Get(name string) (RuleDefinition, bool) {
 		if _, _, ok := ParseAntiRule(name); ok {
 			return Registry[AntiPrefix], true
 		}
+	}
+	// Rapid Fire X — e.g. "Rapid Fire 2"
+	if _, ok := ParseRapidFire(name); ok {
+		return Registry["Rapid Fire X"], true
+	}
+	// Melta X — e.g. "Melta 2"
+	if _, ok := ParseMelta(name); ok {
+		return Registry["Melta X"], true
 	}
 	return RuleDefinition{}, false
 }

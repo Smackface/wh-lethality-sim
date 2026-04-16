@@ -16,6 +16,7 @@ type SimConfig struct {
 	Phase           string // "shooting" | "melee"
 	Iterations      int
 	DefenderInCover bool // defender benefits from Cover (+1 to armour save vs ranged)
+	WithinHalfRange bool // attacker is within half range (enables Rapid Fire X, Melta X bonuses)
 }
 
 // RunSimulation dispatches Iterations concurrent combat resolutions and returns
@@ -41,6 +42,7 @@ func RunSimulation(cfg SimConfig) SimStats {
 				cfg.Phase,
 				defModelCount,
 				cfg.DefenderInCover,
+				cfg.WithinHalfRange,
 				roller,
 			)
 		}(i)
